@@ -14,6 +14,15 @@ def reverse_bb_array(d, varname):
     array = reversed(array.split())
     return " ".join(i for i in array)
 
+python () {
+    import subprocess
+    host_arch = subprocess.Popen("/usr/bin/dpkg --print-architecture",
+                                 shell=True,
+                                 stdout=subprocess.PIPE
+                                ).stdout.read().decode('utf-8').strip()
+    d.setVar("HOST_ARCH", host_arch);
+}
+
 setup_root_file_system() {
     CLEAN=""
     FSTAB=""
