@@ -25,11 +25,13 @@ python () {
 
 setup_root_file_system() {
     CLEAN=""
+    COPYISARAPT=""
     FSTAB=""
     ROOTFS_ARCH="${DISTRO_ARCH}"
     while true; do
         case "$1" in
         --clean) CLEAN=1 ;;
+        --copyisarapt) COPYISARAPT=1 ;;
         --fstab) FSTAB=$2; shift ;;
         --host-arch) ROOTFS_ARCH=${HOST_ARCH} ;;
         -*) bbfatal "$0: invalid option specified: $1" ;;
@@ -54,7 +56,11 @@ setup_root_file_system() {
     echo "Package: *\nPin: release n=${DEBDISTRONAME}\nPin-Priority: 1000" | \
         sudo tee "$ROOTFSDIR/etc/apt/preferences.d/isar" >/dev/null
 
-    sudo mount --bind ${DEPLOY_DIR_APT}/${DISTRO} $ROOTFSDIR/isar-apt
+    if [ ${COPYISARAPT} ]; then
+        sudo cp -Trpfx ${DEPLOY_DIR_APT}/${DISTRO} $ROOTFSDIR/isar-apt
+    else
+        sudo mount --bind ${DEPLOY_DIR_APT}/${DISTRO} $ROOTFSDIR/isar-apt
+    fi
     sudo mount -t devtmpfs -o mode=0755,nosuid devtmpfs $ROOTFSDIR/dev
     sudo mount -t proc none $ROOTFSDIR/proc
 
