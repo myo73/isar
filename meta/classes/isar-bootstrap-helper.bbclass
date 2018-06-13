@@ -26,10 +26,12 @@ python () {
 setup_root_file_system() {
     CLEAN=""
     FSTAB=""
+    ROOTFS_ARCH="${DISTRO_ARCH}"
     while true; do
         case "$1" in
         --clean) CLEAN=1 ;;
         --fstab) FSTAB=$2; shift ;;
+        --host-arch) ROOTFS_ARCH=${HOST_ARCH} ;;
         -*) bbfatal "$0: invalid option specified: $1" ;;
         *) break ;;
         esac
@@ -42,7 +44,7 @@ setup_root_file_system() {
     CLEAN_FILES="${ROOTFSDIR}/etc/hostname ${ROOTFSDIR}/etc/resolv.conf"
 
     sudo cp -Trpfx \
-        "${DEPLOY_DIR_IMAGE}/isar-bootstrap-${DISTRO}-${DISTRO_ARCH}/" \
+        "${DEPLOY_DIR_IMAGE}/isar-bootstrap-${DISTRO}-$ROOTFS_ARCH/" \
         "$ROOTFSDIR"
     [ -n "${FSTAB}" ] && cat ${FSTAB} | sudo tee "$ROOTFSDIR/etc/fstab"
 
