@@ -5,8 +5,6 @@
 #
 # SPDX-License-Identifier: MIT
 
-Description = "Minimal debian root file system"
-
 LICENSE = "gpl-2.0"
 LIC_FILES_CHKSUM = "file://${LAYERDIR_isar}/licenses/COPYING.GPLv2;md5=751419260aa954499f7abaabaa882bbe"
 FILESPATH_prepend := "${THISDIR}/files:"
@@ -172,28 +170,6 @@ python do_apt_config_prepare() {
 }
 addtask apt_config_prepare before do_build after do_unpack
 
-do_bootstrap[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
-do_bootstrap[vardeps] += "DISTRO_APT_SOURCES"
-do_bootstrap[vardeps] += "DISTRO_APT_PREMIRRORS"
-do_bootstrap() {
-    if [ -e "${ROOTFSDIR}" ]; then
-       sudo umount -l "${ROOTFSDIR}/dev" || true
-       sudo umount -l "${ROOTFSDIR}/proc" || true
-       sudo rm -rf "${ROOTFSDIR}"
-    fi
-    E="${@bb.utils.export_proxies(d)}"
-    sudo -E "${DEBOOTSTRAP}" --verbose \
-                             --variant=minbase \
-                             --arch="${DISTRO_ARCH}" \
-                             --include=locales \
-                             ${@get_distro_components_argument(d)} \
-                             ${DEBOOTSTRAP_KEYRING} \
-                             "${@get_distro_suite(d)}" \
-                             "${ROOTFSDIR}" \
-                             "${@get_distro_source(d)}"
-}
-addtask bootstrap before do_build after do_generate_keyring
-
 do_set_locale() {
     sudo install -v -m644 "${WORKDIR}/locale" "${ROOTFSDIR}/etc/locale"
 
@@ -245,15 +221,3 @@ do_apt_update() {
                                       -o Debug::pkgProblemResolver=yes
 }
 addtask apt_update before do_build after do_apt_config_install do_set_locale do_setup_chroot
-
-do_deploy[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
-do_deploy[dirs] = "${DEPLOY_DIR_IMAGE}"
-do_deploy() {
-    ln -Tfsr "${ROOTFSDIR}" "${DEPLOY_DIR_IMAGE}/${PN}-${DISTRO}-${DISTRO_ARCH}"
-}
-addtask deploy before do_build after do_apt_update
-
-CLEANFUNCS = "clean_deploy"
-clean_deploy() {
-     rm -f "${DEPLOY_DIR_IMAGE}/${PN}-${DISTRO}-${DISTRO_ARCH}"
-}
