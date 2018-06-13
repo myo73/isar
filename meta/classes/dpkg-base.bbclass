@@ -31,7 +31,7 @@ def get_package_srcdir(d):
 PP = "/home/builder/${PN}"
 PPS ?= "${@get_package_srcdir(d)}"
 
-BUILDROOT = "${BUILDCHROOT_DIR}/${PP}"
+BUILDROOT = "${ROOTFS_DIR}/${PP}"
 do_build[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 
 # default to "emtpy" implementation
@@ -39,7 +39,7 @@ dpkg_runbuild() {
     die "This should never be called, overwrite it in your derived class"
 }
 
-MOUNT_LOCKFILE = "${BUILDCHROOT_DIR}/mount.lock"
+MOUNT_LOCKFILE = "${ROOTFS_DIR}/mount.lock"
 
 # Wrap the function dpkg_runbuild with the bind mount for buildroot
 do_build() {
@@ -47,11 +47,11 @@ do_build() {
     sudo mount --bind ${WORKDIR} ${BUILDROOT}
 
     sudo flock ${MOUNT_LOCKFILE} -c ' \
-        if ! grep -q ${BUILDCHROOT_DIR}/isar-apt /proc/mounts; then \
-            mount --bind ${DEPLOY_DIR_APT}/${DISTRO} ${BUILDCHROOT_DIR}/isar-apt; \
-            mount --bind ${DL_DIR} ${BUILDCHROOT_DIR}/downloads; \
-            mount -t devtmpfs -o mode=0755,nosuid devtmpfs ${BUILDCHROOT_DIR}/dev; \
-            mount -t proc none ${BUILDCHROOT_DIR}/proc; \
+        if ! grep -q ${ROOTFS_DIR}/isar-apt /proc/mounts; then \
+            mount --bind ${DEPLOY_DIR_APT}/${DISTRO} ${ROOTFS_DIR}/isar-apt; \
+            mount --bind ${DL_DIR} ${ROOTFS_DIR}/downloads; \
+            mount -t devtmpfs -o mode=0755,nosuid devtmpfs ${ROOTFS_DIR}/dev; \
+            mount -t proc none ${ROOTFS_DIR}/proc; \
         fi'
 
     dpkg_runbuild

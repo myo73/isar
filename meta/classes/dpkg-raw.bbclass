@@ -9,6 +9,8 @@ MAINTAINER ?= "FIXME Unknown maintainer"
 # Add dependency from buildchroot creation
 do_build[depends] = "buildchroot:do_build"
 
+ROOTFS_DIR = "${BUILDCHROOT_DIR}"
+
 D = "${WORKDIR}/image/"
 
 # Populate folder that will be picked up as package
@@ -59,5 +61,5 @@ addtask deb_package_conffiles after do_deb_package_prepare before do_build
 
 dpkg_runbuild() {
 	sudo chown -R root:root ${D}/DEBIAN/
-	sudo chroot ${BUILDCHROOT_DIR} dpkg-deb --build ${PP}/image ${PP}
+	sudo chroot ${ROOTFS_DIR} dpkg-deb --build ${PP}/image ${PP}
 }
