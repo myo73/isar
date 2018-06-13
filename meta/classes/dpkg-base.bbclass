@@ -14,9 +14,6 @@ do_adjust_git[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 inherit patch
 addtask patch after do_adjust_git before do_build
 
-# Add dependency from buildchroot creation
-do_build[depends] = "buildchroot:do_build"
-
 # Add dependency between Isar recipes
 DEPENDS ?= ""
 do_build[deptask] = "do_deploy_deb"

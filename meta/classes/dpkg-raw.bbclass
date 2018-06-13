@@ -6,6 +6,9 @@ inherit dpkg-base
 DEBIAN_DEPENDS ?= ""
 MAINTAINER ?= "FIXME Unknown maintainer"
 
+# Add dependency from buildchroot creation
+do_build[depends] = "buildchroot:do_build"
+
 D = "${WORKDIR}/image/"
 
 # Populate folder that will be picked up as package

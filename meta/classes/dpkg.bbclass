@@ -3,6 +3,9 @@
 
 inherit dpkg-base
 
+# Add dependency from buildchroot creation
+do_build[depends] = "buildchroot:do_build"
+
 # Build package from sources using build script
 dpkg_runbuild() {
     E="${@ bb.utils.export_proxies(d)}"
