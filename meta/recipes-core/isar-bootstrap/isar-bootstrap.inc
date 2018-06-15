@@ -15,7 +15,6 @@ SRC_URI = " \
     file://chroot-setup.sh"
 PV = "1.0"
 
-WORKDIR = "${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/${PN}"
 DEBOOTSTRAP ?= "qemu-debootstrap"
 ROOTFSDIR = "${WORKDIR}/rootfs"
 APTPREFS = "${WORKDIR}/apt-preferences"
@@ -109,8 +108,11 @@ def aggregate_aptsources_list(d, file_list, file_out):
                     out_fd.write("\n".encode())
             out_fd.write("\n".encode())
 
-def get_distro_primary_source_entry(d):
-    apt_sources_list = (d.getVar("DISTRO_APT_SOURCES", True) or "").split()
+def get_distro_primary_source_entry(d, is_host=False):
+    if is_host:
+        apt_sources_list = (d.getVar("HOST_DISTRO_APT_SOURCES", True) or "").split()
+    else:
+        apt_sources_list = (d.getVar("DISTRO_APT_SOURCES", True) or "").split()
     for entry in apt_sources_list:
         entry_real = bb.parse.resolve_file(entry, d)
         with open(entry_real, "r") as in_fd:
@@ -122,20 +124,19 @@ def get_distro_primary_source_entry(d):
                         return parsed[2:]
     return ["", "", ""]
 
-def get_distro_source(d):
-    return get_distro_primary_source_entry(d)[0]
+def get_distro_source(d, is_host):
+    return get_distro_primary_source_entry(d, is_host)[0]
 
-def get_distro_suite(d):
-    return get_distro_primary_source_entry(d)[1]
+def get_distro_suite(d, is_host):
+    return get_distro_primary_source_entry(d, is_host)[1]
 
-def get_distro_components_argument(d):
-    components = get_distro_primary_source_entry(d)[2]
+def get_distro_components_argument(d, is_host):
+    components = get_distro_primary_source_entry(d, is_host)[2]
     if components and components.strip():
         return "--components=%s" % ",".join(components.split())
     else:
         return ""
 
-do_generate_keyring[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 do_generate_keyring[dirs] = "${WORKDIR}"
 do_generate_keyring[vardeps] += "DISTRO_APT_KEYS"
 do_generate_keyring() {
@@ -147,28 +148,6 @@ do_generate_keyring() {
     fi
 }
 addtask generate_keyring before do_build after do_unpack
-
-do_apt_config_prepare[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
-do_apt_config_prepare[dirs] = "${WORKDIR}"
-do_apt_config_prepare[vardeps] += "\
-                                   APTPREFS \
-                                   DISTRO_APT_PREFERENCES \
-                                   DEBDISTRONAME \
-                                   APTSRCS \
-                                   DISTRO_APT_SOURCES \
-                                  "
-python do_apt_config_prepare() {
-    apt_preferences_out = d.getVar("APTPREFS", True)
-    apt_preferences_list = (d.getVar("DISTRO_APT_PREFERENCES", True) or ""
-                           ).split()
-    aggregate_files(d, apt_preferences_list, apt_preferences_out)
-
-    apt_sources_out = d.getVar("APTSRCS", True)
-    apt_sources_list = (d.getVar("DISTRO_APT_SOURCES", True) or "").split()
-
-    aggregate_aptsources_list(d, apt_sources_list, apt_sources_out)
-}
-addtask apt_config_prepare before do_build after do_unpack
 
 do_set_locale() {
     sudo install -v -m644 "${WORKDIR}/locale" "${ROOTFSDIR}/etc/locale"
@@ -189,7 +168,6 @@ def get_host_release():
     rel = platform.release()
     return rel
 
-do_apt_config_install[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 do_apt_config_install() {
     sudo mkdir -p "${ROOTFSDIR}/etc/apt/preferences.d"
     sudo install -v -m644 "${APTPREFS}" \
@@ -202,14 +180,13 @@ do_apt_config_install() {
     sudo install -v -m644 "${WORKDIR}/isar-apt.conf" \
                           "${ROOTFSDIR}/etc/apt/apt.conf.d/50isar.conf"
 
-    if [ "${@get_distro_suite(d)}" = "stretch" ] && [ "${@get_host_release().split('.')[0]}" -lt "4" ]; then
+    if [ "${@get_distro_suite(d, True)}" = "stretch" ] && [ "${@get_host_release().split('.')[0]}" -lt "4" ]; then
         sudo install -v -m644 "${WORKDIR}/isar-apt-fallback.conf" \
                               "${ROOTFSDIR}/etc/apt/apt.conf.d/55isar-fallback.conf"
     fi
 }
 addtask apt_config_install before do_build after do_bootstrap do_apt_config_prepare
 
-do_apt_update[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 do_apt_update() {
     sudo mount -t devtmpfs -o mode=0755,nosuid devtmpfs ${ROOTFSDIR}/dev
     sudo mount -t proc none ${ROOTFSDIR}/proc

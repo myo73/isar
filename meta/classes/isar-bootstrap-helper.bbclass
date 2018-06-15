@@ -7,6 +7,18 @@
 
 IMAGE_TRANSIENT_PACKAGES ??= ""
 
+def get_deb_host_arch():
+    import subprocess
+    arch =  subprocess.check_output(['dpkg-architecture', '-q', 'DEB_HOST_ARCH'], universal_newlines=True)
+    return str.splitlines(arch)[0]
+
+#Debian Distribution for SDK host
+HOST_DISTRO ?= "debian-stretch"
+#Determine SDK host architecture if not explicitly set
+HOST_ARCH ?= "${@get_deb_host_arch()}"
+
+HOST_DISTRO_APT_SOURCES += "conf/distro/${HOST_DISTRO}.list"
+
 def reverse_bb_array(d, varname):
     array = d.getVar(varname, True)
     if array is None:
@@ -14,26 +26,20 @@ def reverse_bb_array(d, varname):
     array = reversed(array.split())
     return " ".join(i for i in array)
 
-python () {
-    import subprocess
-    host_arch = subprocess.Popen("/usr/bin/dpkg --print-architecture",
-                                 shell=True,
-                                 stdout=subprocess.PIPE
-                                ).stdout.read().decode('utf-8').strip()
-    d.setVar("HOST_ARCH", host_arch);
-}
 
 setup_root_file_system() {
     CLEAN=""
     COPYISARAPT=""
     FSTAB=""
     ROOTFS_ARCH="${DISTRO_ARCH}"
+    ROOTFS_DISTRO="${DISTRO}"
     while true; do
         case "$1" in
         --clean) CLEAN=1 ;;
         --copyisarapt) COPYISARAPT=1 ;;
         --fstab) FSTAB=$2; shift ;;
         --host-arch) ROOTFS_ARCH=${HOST_ARCH} ;;
+        --host-distro) ROOTFS_DISTRO=${HOST_DISTRO} ;;
         -*) bbfatal "$0: invalid option specified: $1" ;;
         *) break ;;
         esac
@@ -46,7 +52,7 @@ setup_root_file_system() {
     CLEAN_FILES="${ROOTFSDIR}/etc/hostname ${ROOTFSDIR}/etc/resolv.conf"
 
     sudo cp -Trpfx \
-        "${DEPLOY_DIR_IMAGE}/isar-bootstrap-${DISTRO}-$ROOTFS_ARCH/" \
+        "${DEPLOY_DIR_IMAGE}/isar-bootstrap-$ROOTFS_DISTRO-$ROOTFS_ARCH/" \
         "$ROOTFSDIR"
     [ -n "${FSTAB}" ] && cat ${FSTAB} | sudo tee "$ROOTFSDIR/etc/fstab"
 
@@ -57,9 +63,9 @@ setup_root_file_system() {
         sudo tee "$ROOTFSDIR/etc/apt/preferences.d/isar" >/dev/null
 
     if [ ${COPYISARAPT} ]; then
-        sudo cp -Trpfx ${DEPLOY_DIR_APT}/${DISTRO} $ROOTFSDIR/isar-apt
+        sudo cp -Trpfx ${DEPLOY_DIR_APT}/${ROOTFS_DISTRO} $ROOTFSDIR/isar-apt
     else
-        sudo mount --bind ${DEPLOY_DIR_APT}/${DISTRO} $ROOTFSDIR/isar-apt
+        sudo mount --bind ${DEPLOY_DIR_APT}/${ROOTFS_DISTRO} $ROOTFSDIR/isar-apt
     fi
     sudo mount -t devtmpfs -o mode=0755,nosuid devtmpfs $ROOTFSDIR/dev
     sudo mount -t proc none $ROOTFSDIR/proc
